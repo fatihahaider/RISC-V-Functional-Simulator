@@ -75,7 +75,7 @@ Instruction simDecode(Instruction inst) {
         inst.isHalt = true;
         return inst; // halt instruction
     }
-    if (inst.instruction == 0x00000013) {
+    if (inst.instruction == 0x00000013) { // addi 
         inst.isNop = true;
         return inst; // NOP instruction
     }
@@ -88,10 +88,56 @@ Instruction simDecode(Instruction inst) {
                 inst.writesRd = true;
                 inst.readsRs1 = true;
                 inst.readsRs2 = false;
-            } else {
+            } else if (inst.funct3 == FUNCT3_SLL) {
+
+            } else if (inst.funct3 == FUNCT3_SLT){
+
+            } else if (inst.funct3 ==  FUNCT3_XOR) {
+
+            } else if (inst.funct3 == FUNCT3_SRL_SRA) {
+
+            } else if (inst.funct3 == FUNCT3_OR){
+
+            } else if (inst.funct3 == FUNCT3_AND){
+
+            } else if
+
+            
+            else {
                 inst.isLegal = false;
             }
             break;
+        
+        case OP_INTIMMW:
+            break;
+        
+        case OP_LOAD:
+            break; 
+
+        case OP_RTYPE:
+            break;
+
+        case OP_RTYPEW:
+            break;
+
+        case OP_STORE: 
+            break;
+        
+        case OP_SBTYPE;
+            break;
+        
+        case OP_LUI:
+            break;
+
+        case OP_AUIPC:
+            break;
+
+        case OP_JAL:
+            break;
+
+        case OP_JALR:
+            break;
+
         default:
             inst.isLegal = false;
     }
