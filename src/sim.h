@@ -29,19 +29,69 @@ uint64_t PC;
 enum OPCODES {
     // I-type opcodes
     OP_INTIMM  = 0b0010011, // Integer ALU immediate instructions addi, slli, slti, sltiu, xori, srli, srai, ori, andi
-    // ...
+    OP_INTIMMW = 0b0011011, // Integer ALU immediate instructions (keep low 32-bits and sign extends) addiw, slliw, srliw, sraiw
+    OP_LOAD = 0b0000011, // lb, lh, lw, ld, lbu, lhu, lwu
+
+    // R-Type opcodes
+    OP_RTYPE = 0b0110011, // Register to Register instructions add, sub, sll, slt, sltu, xor, srl, sra, or, and
+    OP_RTYPEW = 0b0111011, // Register to Register instructions (keep low 32-bits and sign extends) addw, subw, sllw, srlw, sraw
+
+    // S-TYPE opcodes 
+    OP_STORE = 0b0100011, // sb, sh, sw, sd
+
+    // SB-TYPE opcodes
+    OP_SBTYPE = 0b1100011, // Branching instructions beq, bne, blt, bge, bltu, bgeu
+
+    // U type instruction opcode
+    OP_LUI = 0b0110111, // lui
+    OP_AUIPC = 0b0010111, // auipc
+
+    // Jump type instruction opcode
+    OP_JALR = 0b1100111, // jalr
+    OP_JAL = 0b1101111 //jal
 };
 
 enum FUNCT3 {
     // For integer ALU instructions
-    FUNCT3_ADD  = 0b000, // add
-    // ...
+    FUNCT3_ADD = 0b000, // add
+    FUNCT3_SLL = 0b001, 
+    FUNCT3_SLT = 0b010,
+    FUNCT3_XOR = 0b100, 
+    FUNCT3_SRL_SRA = 0b101,
+    FUNCT3_OR = 0b110,
+    FUNCT3_AND = 0b111,
+
+    FUNCT3_SUB = 0b000,
+    FUNCT3_SLTU = 0b011,
+    
+
+    // For load instructions
+    FUNCT3_LB = 0b000,
+    FUNCT3_LH = 0b001,
+    FUNCT3_LW = 0b010,
+    FUNCT3_LD  = 0b011,
+    FUNCT3_LBU = 0b100,
+    FUNCT3_LHU = 0b101,
+    FUNCT3_LWU = 0b110,
+
+    // For branch instructions 
+    FUNCT3_BEQ = 0b000,
+    FUNCT3_BNE = 0b001,
+    FUNCT3_BLT = 0b100,
+    FUNCT3_BGE = 0b101,
+    FUNCT3_BLTU = 0b110,
+    FUNCT3_BGEU = 0b111,
+
+     // For store instructions
+    FUNCT3_SB = 0b000,
+    FUNCT3_SH = 0b001,
+    FUNCT3_SW = 0b010,
+    FUNCT3_SD = 0b011,
 };
 
-enum RI_FUNCT7 {
-    // for R type add/sub instruction
-    FUNCT7_ADD     = 0b0000000, // add
-    // ...
+enum RI_FUNCT7 { 
+    FUNCT7_DEFAULT= 0b0000000, // sub
+    FUNCT7_SUB_SRA = 0b0100000, // funcs with distint funct7 code sub, srai, sraiw, sra, subw, sraw
 };
 
 // --------------------------------------------------------------------------
@@ -60,6 +110,12 @@ bool initMemory(char *programFile, MemoryStore *myMem);
 
 // dump registers and memory
 void dump(MemoryStore *myMem);
+
+// added: extracts bits 
+uint64_t bitExtract(uint64_t instruction, int high, int low);
+
+// added: sign extends 
+uint64_t signExtend(uint64_t code, int num);
 
 // --------------------------------------------------------------------------
 // Simulation functions
