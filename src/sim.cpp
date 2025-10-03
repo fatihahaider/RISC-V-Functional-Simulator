@@ -51,6 +51,17 @@ void dump(MemoryStore *myMem) {
 // TODO All functions below (except main) are incomplete.
 // Only ADDI is implemented. Your task is to complete these functions.
 
+uint64_t bitExtract(uint64_t instruction, int high, int low) {
+    uint64_t width = hi - lo + 1;
+    return (x >> lo) & ((width == 64) ? ~0ULL : ((1ULL << width) - 1));
+}
+
+uint64_t signExtend(uint64_t code, int num) {
+    // bits is the source width (e.g., 12 for I-imm)
+    uint64_t m = 1ULL << (bits - 1);
+    return (x ^ m) - m;
+}
+
 // Get raw instruction bits from memory
 Instruction simFetch(uint64_t PC, MemoryStore *myMem) {
     // fetch current instruction
@@ -67,9 +78,13 @@ Instruction simFetch(uint64_t PC, MemoryStore *myMem) {
 // Determine instruction opcode, funct, reg names, and what resources to use
 Instruction simDecode(Instruction inst) {
     inst.opcode = inst.instruction & 0b1111111;
-    inst.funct3 = inst.instruction >> 12 & 0b111;
-    inst.rd = inst.instruction >> 7 & 0b11111;
-    inst.rs1 = inst.instruction >> 15 & 0b11111;
+    
+    // inst.rs2   = (inst.instruction >> 20) & 0b11111; 
+    // inst.funct7 = (inst.instruction >> 25) & 0b1111111;
+    // inst.funct3 = inst.instruction >> 12 & 0b111;
+    // inst.rd = inst.instruction >> 7 & 0b11111;
+    // inst.rs1 = inst.instruction >> 15 & 0b11111;
+    // inst.imm = inst.instruction >> 20 & 0b111111111111;
 
     if (inst.instruction == 0xfeedfeed) {
         inst.isHalt = true;
@@ -81,61 +96,184 @@ Instruction simDecode(Instruction inst) {
     }
     inst.isLegal = true; // assume legal unless proven otherwise
 
-    switch (inst.opcode) {
+    switch (inst.opcode) { //addi, slli, slti, sltiu, xori, srli, srai, ori, andi
         case OP_INTIMM:
-            if (inst.funct3 == FUNCT3_ADD) {
-                inst.doesArithLogic = true;
-                inst.writesRd = true;
-                inst.readsRs1 = true;
-                inst.readsRs2 = false;
-            } else if (inst.funct3 == FUNCT3_SLL) {
-
-            } else if (inst.funct3 == FUNCT3_SLT){
-
-            } else if (inst.funct3 ==  FUNCT3_XOR) {
-
-            } else if (inst.funct3 == FUNCT3_SRL_SRA) {
-
-            } else if (inst.funct3 == FUNCT3_OR){
-
-            } else if (inst.funct3 == FUNCT3_AND){
-
-            } else if
-
             
+            inst.doesArithLogic = true;
+            inst.writesRd = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = false;
+
+            if (inst.funct3 == FUNCT3_ADD_SUB || 
+                inst.funct3 == FUNCT3_SLL || 
+                inst.funct3 == FUNCT3_SLT || 
+                inst.funct3 == FUNCT3_SLTU ||
+                inst.funct3 == FUNCT3_XOR || 
+                inst.funct3 == FUNCT3_SRL_SRA || 
+                inst.funct3 == FUNCT3_OR || 
+                inst.funct3 == FUNCT3_AND) {
+                    //pass
+            } 
             else {
                 inst.isLegal = false;
             }
             break;
         
-        case OP_INTIMMW:
+        case OP_INTIMMW: // addiw, slliw, srliw, sraiw
+            inst.funct3 = inst.instruction >> 12 & 0b111;
+            inst.rd = inst.instruction >> 7 & 0b11111;
+            inst.rs1 = inst.instruction >> 15 & 0b11111;
+            inst.imm = inst.instruction >> 20 & 0b111111111111;
+
+            inst.doesArithLogic = true;
+            inst.writesRd = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = false;
+
+            if (inst.funct3 == FUNCT3_ADD_SUB || 
+                inst.funct3 == FUNCT3_SLL || 
+                inst.funct3 == FUNCT3_SRL_SRA) {
+                    //pass
+            } 
+            else {
+                inst.isLegal = false;
+            }
+
             break;
         
-        case OP_LOAD:
+        case OP_LOAD: // lb, lh, lw, ld, lbu, lhu, lwu
+            inst.doesArithLogic = true;
+            inst.writesRd = true;
+            inst.readsMem = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = false;
+
+            if (inst.funct3 == FUNCT3_LB || 
+                inst.funct3 == FUNCT3_LH || 
+                inst.funct3 == FUNCT3_LW || 
+                inst.funct3 == FUNCT3_LD || 
+                inst.funct3 == FUNCT3_LBU || 
+                inst.funct3 == FUNCT3_LHU || 
+                inst.funct3 == FUNCT3_LWU) {
+                    //pass
+            } 
+            else {
+                inst.isLegal = false;
+            }
+            
             break; 
 
-        case OP_RTYPE:
+        case OP_RTYPE: //add, sub, sll, slt, sltu, xor, srl, sra, or, and
+            inst.doesArithLogic = true;
+            inst.writesRd = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = true;
+
+            if (inst.funct3 == FUNCT3_ADD_SUB || 
+                inst.funct3 == FUNCT3_SLL || 
+                inst.funct3 == FUNCT3_SLT || 
+                inst.funct3 == FUNCT3_SLTU ||
+                inst.funct3 == FUNCT3_XOR || 
+                inst.funct3 == FUNCT3_SRL_SRA || 
+                inst.funct3 == FUNCT3_OR || 
+                inst.funct3 == FUNCT3_AND) {
+                    //pass
+            } 
+            else {
+                inst.isLegal = false;
+            }
             break;
 
-        case OP_RTYPEW:
+        case OP_RTYPEW: //addw, subw, sllw, srlw, sraw
+            inst.doesArithLogic = true;
+            inst.writesRd = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = true;
+
+            if (inst.funct3 == FUNCT3_ADD_SUB || 
+                inst.funct3 == FUNCT3_SLL || 
+                inst.funct3 == FUNCT3_SRL_SRA ) {
+                    //pass
+            } 
+            else {
+                inst.isLegal = false;
+            }
             break;
 
-        case OP_STORE: 
+        case OP_STORE: // sb, sh, sw, sd
+            inst.doesArithLogic = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = true;
+            inst.writesMem = true;
+            inst.writesRd = false;
+
+            if (inst.funct3 == FUNCT3_SB || 
+                inst.funct3 == FUNCT3_SH || 
+                inst.funct3 == FUNCT3_SW ||
+                inst.funct3 == FUNCT3_SD) {
+                    //pass
+            } 
+            else {
+                inst.isLegal = false;
+            } 
+
             break;
         
-        case OP_SBTYPE;
+        case OP_SBTYPE: // beq, bne, blt, bge, bltu, bgeu
+            inst.doesArithLogic = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = true;
+            inst.writesRd = false;
+
+            if (inst.funct3 == FUNCT3_BEQ || 
+                inst.funct3 == FUNCT3_BNE ||
+                inst.funct3 == FUNCT3_BLT ||
+                inst.funct3 == FUNCT3_BGE ||
+                inst.funct3 == FUNCT3_BLTU ||
+                inst.funct3 == FUNCT3_BGEU) {
+                    //pass
+            } 
+            else {
+                inst.isLegal = false;
+            } 
             break;
         
         case OP_LUI:
+            inst.doesArithLogic = true;
+            inst.readsRs1 = false;
+            inst.readsRs2 = false;
+            inst.writesRd = true;
+
             break;
 
         case OP_AUIPC:
+            inst.doesArithLogic = true;
+            inst.readsRs1 = false;
+            inst.readsRs2 = false;
+            inst.writesRd = true;
+            
             break;
 
         case OP_JAL:
+            inst.doesArithLogic = true;
+            inst.readsRs1 = false;
+            inst.readsRs2 = false;
+            inst.writesRd = true;
+        
             break;
 
         case OP_JALR:
+            inst.doesArithLogic = true;
+            inst.readsRs1 = true;
+            inst.readsRs2 = false;
+            inst.writesRd = true;
+            
+            if (inst.funct3 == FUNCT3_JALR) {
+            //pass
+            }
+            else { 
+                inst.isLegal = false;
+            }
             break;
 
         default:
@@ -146,9 +284,14 @@ Instruction simDecode(Instruction inst) {
 
 // Collect reg operands for arith or addr gen
 Instruction simOperandCollection(Instruction inst, REGS regData) {
-    
-    inst.op1Val = regData.registers[inst.rs1];
+    if (inst.readsRs1){
+        inst.op1Val = regData.registers[inst.rs1];
 
+    }
+
+    if(inst.readsRs2){
+        inst.op2Val = regData.registers[inst.rs2];
+    }
     return inst;
 }
 

@@ -51,42 +51,88 @@ enum OPCODES {
     OP_JAL = 0b1101111 //jal
 };
 
+enum CODES{
+    I = 
+}
+
 enum FUNCT3 {
-    // For integer ALU instructions
-    FUNCT3_ADD = 0b000, // add
-    FUNCT3_SLL = 0b001, 
-    FUNCT3_SLT = 0b010,
-    FUNCT3_XOR = 0b100, 
-    FUNCT3_SRL_SRA = 0b101,
-    FUNCT3_OR = 0b110,
-    FUNCT3_AND = 0b111,
 
-    FUNCT3_SUB = 0b000,
-    FUNCT3_SLTU = 0b011,
+// -------------------------
+    // R/I arithmetic & logical
+    // -------------------------
     
+    FUNCT3_ADD_SUB        = 0b000, 
+    // R: ADD/SUB (SUB iff funct7=0100000) 
+    // I: ADDI
+    // // R (W): ADDW/SUBW (SUBW iff funct7=0100000)
+    // I (W): ADDIW
 
-    // For load instructions
-    FUNCT3_LB = 0b000,
-    FUNCT3_LH = 0b001,
-    FUNCT3_LW = 0b010,
-    FUNCT3_LD  = 0b011,
-    FUNCT3_LBU = 0b100,
-    FUNCT3_LHU = 0b101,
-    FUNCT3_LWU = 0b110,
+    FUNCT3_SLL            = 0b001, 
+    // R: SLL
+    // I: SLLI (shift imm; upper imm bits distinguish width)
+    // R (W): SLLW
+    // I (W): SLLIW
 
-    // For branch instructions 
-    FUNCT3_BEQ = 0b000,
-    FUNCT3_BNE = 0b001,
-    FUNCT3_BLT = 0b100,
-    FUNCT3_BGE = 0b101,
-    FUNCT3_BLTU = 0b110,
-    FUNCT3_BGEU = 0b111,
+    FUNCT3_SLT            = 0b010, 
+    // R: SLT
+    // I: SLTI
 
-     // For store instructions
-    FUNCT3_SB = 0b000,
-    FUNCT3_SH = 0b001,
-    FUNCT3_SW = 0b010,
-    FUNCT3_SD = 0b011,
+    FUNCT3_SLTU           = 0b011, 
+    // R: SLTU
+    // I: SLTIU
+
+    FUNCT3_XOR            = 0b100, 
+    // R: XOR
+    // I: XORI
+
+    FUNCT3_SRL_SRA        = 0b101, 
+    // R: SRL/SRA (SRA iff funct7=0100000)
+    // I: SRLI/SRAI (SRAI iff upper imm bits=0100000)
+    // R (W): SRLW/SRAW (SRAW iff funct7=0100000)
+    // I (W): SRLIW/SRAIW (SRAIW iff upper imm bits=0100000)
+
+    FUNCT3_OR             = 0b110, 
+    // R: OR
+    // I: ORI
+
+    FUNCT3_AND            = 0b111, 
+    // R: AND
+    // I: ANDI
+
+    // -----
+    // LOADS
+    // -----
+    FUNCT3_LB             = 0b000, // LB
+    FUNCT3_LH             = 0b001, // LH
+    FUNCT3_LW             = 0b010, // LW
+    FUNCT3_LD             = 0b011, // LD
+    FUNCT3_LBU            = 0b100, // LBU
+    FUNCT3_LHU            = 0b101, // LHU
+    FUNCT3_LWU            = 0b110, // LWU
+
+    // ------
+    // STORES
+    // ------
+    FUNCT3_SB             = 0b000, // SB
+    FUNCT3_SH             = 0b001, // SH
+    FUNCT3_SW             = 0b010, // SW
+    FUNCT3_SD             = 0b011, // SD
+
+    // --------
+    // BRANCHES
+    // --------
+    FUNCT3_BEQ            = 0b000, // BEQ
+    FUNCT3_BNE            = 0b001, // BNE
+    FUNCT3_BLT            = 0b100, // BLT
+    FUNCT3_BGE            = 0b101, // BGE
+    FUNCT3_BLTU           = 0b110, // BLTU
+    FUNCT3_BGEU           = 0b111, // BGEU
+
+    // ----
+    // JUMP
+    // ----
+    FUNCT3_JALR           = 0b000  // JALR (I-type, fixed funct3)
+    // (JAL, LUI, AUIPC have no funct3)
 };
 
 enum RI_FUNCT7 { 
@@ -144,6 +190,7 @@ struct Instruction {
     uint64_t rd = 0;
     uint64_t rs1 = 0;
     uint64_t rs2 = 0;
+    uint64_t imm = 0; //added
 
     uint64_t nextPC = 0;
 
