@@ -47,13 +47,9 @@ enum OPCODES {
     OP_AUIPC = 0b0010111, // auipc
 
     // Jump type instruction opcode
-    OP_JALR = 0b1100111, // jalr
-    OP_JAL = 0b1101111 //jal
+    OP_JALR = 0b1100111, // jalr I
+    OP_JAL = 0b1101111 //jal UJ
 };
-
-enum CODES{
-    I = 
-}
 
 enum FUNCT3 {
 
@@ -157,9 +153,6 @@ bool initMemory(char *programFile, MemoryStore *myMem);
 // dump registers and memory
 void dump(MemoryStore *myMem);
 
-// added: extracts bits 
-uint64_t bitExtract(uint64_t instruction, int high, int low);
-
 // added: sign extends 
 uint64_t signExtend(uint64_t code, int num);
 
@@ -200,6 +193,13 @@ struct Instruction {
     uint64_t arithResult = 0;
     uint64_t memAddress = 0;
     uint64_t memResult = 0;
+
+    bool     isR = false;
+    bool     isI = false;
+    bool     isU = false;
+    bool     isUJ = false;
+    bool     isS = false;
+    bool     isSB = false;
 };
 
 // The following functions are the core of the simulator. Your task is to
@@ -217,6 +217,9 @@ Instruction simDecode(Instruction inst);
 
 // Collect reg operands for arith or addr gen
 Instruction simOperandCollection(Instruction inst, REGS regData);
+
+// determine the type of instruction R, I, S, SB, U, UJ and instruction type
+Instruction instructionTypeandBits(Instruction inst);
 
 // Resolve next PC whether +4 or branch/jump target
 Instruction simNextPCResolution(Instruction inst);

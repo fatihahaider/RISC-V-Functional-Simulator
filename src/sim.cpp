@@ -286,7 +286,6 @@ Instruction simDecode(Instruction inst) {
 Instruction simOperandCollection(Instruction inst, REGS regData) {
     if (inst.readsRs1){
         inst.op1Val = regData.registers[inst.rs1];
-
     }
 
     if(inst.readsRs2){
@@ -295,8 +294,73 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
     return inst;
 }
 
+// determine the type of instruction R, I, S, SB, U, UJ and instruction type 
+Instruction instructionTypeandBits(Instruction inst) {
+    if (inst.opcode == OP_RTYPE || inst.opcode == OP_RTYPEW) {
+        inst.isR = true;
+
+        inst.rd     = (inst.instruction >> 7)  & 0b11111;
+        inst.funct3 = (inst.instruction >> 12) & 0b111;
+        inst.rs1    = (inst.instruction >> 15) & 0b11111;
+        inst.rs2    = (inst.instruction >> 20) & 0b11111;
+        inst.funct7 = (inst.instruction >> 25) & 0b1111111;
+    }
+    else if (inst.opcode == OP_INTIMM || inst.opcode == OP_INTIMMW || 
+    inst.opcode == OP_LOAD || inst.opcode == OP_JALR) {
+        inst.isI = true;
+        
+        inst.funct3 = inst.instruction >> 12 & 0b111;
+        inst.rd = inst.instruction >> 7 & 0b11111;
+        inst.rs1 = inst.instruction >> 15 & 0b11111;
+        inst.imm = inst.instruction >> 20 & 0b111111111111;
+    }
+    else if (inst.opcode == OP_STORE) {
+        inst.isS = true;
+
+        inst.funct3 = (inst.instruction >> 12) & 0b111;
+        inst.rs1 = (inst.instruction >> 15) & 0b11111;
+        inst.rs2 = (inst.instruction >> 20) & 0b11111;
+        uint64_t immhi = (inst.instruction >> 25) & 0x7F;
+        uint64_t immlo = (inst.instruction >> 7)  & 0x1F;
+        inst.imm = signExtend((immhi << 5) | immlo, 12);
+    }
+    else if (inst.opcode == OP_SBTYPE) {
+        inst.isSB = true;
+
+        inst.funct3 = (inst.instruction >> 12) & 0b111;
+        inst.rs1 = (inst.instruction >> 15) & 0b11111;
+        inst.rs2 = (inst.instruction >> 20) & 0b11111;
+        uint64_t imm12 = (inst.instruction >> 31) & 0x1;
+        uint64_t imm10_5 = (inst.instruction >> 25) & 0x3F;
+        uint64_t imm4_1 = (inst.instruction >> 8)  & 0xF;
+        uint64_t imm11 = (inst.instruction >> 7)  & 0x1;
+        inst.imm    = signExtend((imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1), 13);
+    }
+    else if (inst.opcode == OP_LUI || inst.opcode == OP_AUIPC) {
+        inst.isU = true;
+
+        inst.rd  = (inst.instruction >> 7)  & 0b11111;
+        inst.imm = (inst.instruction & 0xFFFFF000);
+    }
+    else if (inst.opcode == OP_JAL) {
+        inst.isUJ = true;
+
+        inst.rd = (inst.instruction >> 7) & 0b11111;
+        uint64_t imm20   = (inst.instruction >> 31) & 0x1;
+        uint64_t imm10_1 = (inst.instruction >> 21) & 0x3FF;
+        uint64_t imm11   = (inst.instruction >> 20) & 0x1;
+        uint64_t imm19_12= (inst.instruction >> 12) & 0xFF;
+        inst.imm = signExtend((imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1), 21);
+    }
+    return inst;
+}
+
 // Resolve next PC whether +4 or branch/jump target
 Instruction simNextPCResolution(Instruction inst) {
+
+    if(inst.isSB) { 
+        
+    }
 
     inst.nextPC = inst.PC + 4;
 
