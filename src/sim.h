@@ -132,7 +132,7 @@ enum FUNCT3 {
 };
 
 enum RI_FUNCT7 { 
-    FUNCT7_DEFAULT= 0b0000000, // sub
+    FUNCT7_DEFAULT= 0b0000000, // slli, srli, slliw, srliw, add, sll, slt, sltu, xor, srl, or, and, addw, sllw, srlw
     FUNCT7_SUB_SRA = 0b0100000, // funcs with distint funct7 code sub, srai, sraiw, sra, subw, sraw
 };
 
@@ -183,7 +183,7 @@ struct Instruction {
     uint64_t rd = 0;
     uint64_t rs1 = 0;
     uint64_t rs2 = 0;
-    uint64_t imm = 0; //added
+    int64_t imm = 0; //added
 
     uint64_t nextPC = 0;
 

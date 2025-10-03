@@ -51,15 +51,9 @@ void dump(MemoryStore *myMem) {
 // TODO All functions below (except main) are incomplete.
 // Only ADDI is implemented. Your task is to complete these functions.
 
-uint64_t bitExtract(uint64_t instruction, int high, int low) {
-    uint64_t width = hi - lo + 1;
-    return (x >> lo) & ((width == 64) ? ~0ULL : ((1ULL << width) - 1));
-}
-
-uint64_t signExtend(uint64_t code, int num) {
-    // bits is the source width (e.g., 12 for I-imm)
+static inline int64_t signExtend(uint64_t x, int bits) {
     uint64_t m = 1ULL << (bits - 1);
-    return (x ^ m) - m;
+    return (int64_t)((x ^ m) - m);
 }
 
 // Get raw instruction bits from memory
@@ -77,15 +71,8 @@ Instruction simFetch(uint64_t PC, MemoryStore *myMem) {
 
 // Determine instruction opcode, funct, reg names, and what resources to use
 Instruction simDecode(Instruction inst) {
-    inst.opcode = inst.instruction & 0b1111111;
+    inst = instructionTypeandBits(inst);
     
-    // inst.rs2   = (inst.instruction >> 20) & 0b11111; 
-    // inst.funct7 = (inst.instruction >> 25) & 0b1111111;
-    // inst.funct3 = inst.instruction >> 12 & 0b111;
-    // inst.rd = inst.instruction >> 7 & 0b11111;
-    // inst.rs1 = inst.instruction >> 15 & 0b11111;
-    // inst.imm = inst.instruction >> 20 & 0b111111111111;
-
     if (inst.instruction == 0xfeedfeed) {
         inst.isHalt = true;
         return inst; // halt instruction
@@ -96,9 +83,13 @@ Instruction simDecode(Instruction inst) {
     }
     inst.isLegal = true; // assume legal unless proven otherwise
 
+    // Needed for I/IW shift-immediate legality
+    uint8_t immHi  = 0; // imm[11:5]
+    uint8_t shamt6 = 0; // 6-bit shamt (RV64)
+    uint8_t shamt5 = 0; // 5-bit shamt (W)
+
     switch (inst.opcode) { //addi, slli, slti, sltiu, xori, srli, srai, ori, andi
         case OP_INTIMM:
-            
             inst.doesArithLogic = true;
             inst.writesRd = true;
             inst.readsRs1 = true;
@@ -112,19 +103,40 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_SRL_SRA || 
                 inst.funct3 == FUNCT3_OR || 
                 inst.funct3 == FUNCT3_AND) {
-                    //pass
-            } 
+
+                // I-type shift-immediates (RV64 -> 6-bit shamt)
+                if (inst.funct3 == FUNCT3_SLL) {
+                    immHi  = (inst.instruction >> 25) & 0x7F; // imm[11:5]
+                    shamt6 = (inst.instruction >> 20) & 0x3F; // 6-bit shamt
+
+                    // SLLI: imm[11:5] must be 0000000; shamt in [0..63]
+                    if (immHi != 0b0000000) {
+                    inst.isLegal = false;
+                    }
+
+                    if (shamt6 >= 64) {
+                    inst.isLegal = false; // checking the bound
+                    }
+                } 
+                else if (inst.funct3 == FUNCT3_SRL_SRA) {
+                    immHi  = (inst.instruction >> 25) & 0x7F; // imm[11:5]
+                    shamt6 = (inst.instruction >> 20) & 0x3F;
+
+                    // SRLI (0000000) or SRAI (0100000) only; shamt in [0..63]
+                    if (!(immHi == 0b0000000 || immHi == 0b0100000)) {
+                    inst.isLegal = false;
+                    }
+
+                    if (shamt6 >= 64) {
+                    inst.isLegal = false; // checking the bound
+                    }      
+                }
             else {
                 inst.isLegal = false;
             }
             break;
         
         case OP_INTIMMW: // addiw, slliw, srliw, sraiw
-            inst.funct3 = inst.instruction >> 12 & 0b111;
-            inst.rd = inst.instruction >> 7 & 0b11111;
-            inst.rs1 = inst.instruction >> 15 & 0b11111;
-            inst.imm = inst.instruction >> 20 & 0b111111111111;
-
             inst.doesArithLogic = true;
             inst.writesRd = true;
             inst.readsRs1 = true;
@@ -133,12 +145,36 @@ Instruction simDecode(Instruction inst) {
             if (inst.funct3 == FUNCT3_ADD_SUB || 
                 inst.funct3 == FUNCT3_SLL || 
                 inst.funct3 == FUNCT3_SRL_SRA) {
-                    //pass
-            } 
-            else {
+
+                // I-W shift-immediates (W -> 5-bit shamt)
+                if (inst.funct3 == FUNCT3_SLL) {
+                    immHi  = (inst.instruction >> 25) & 0x7F; // imm[11:5]
+                    shamt5 = (inst.instruction >> 20) & 0x1F; // 5-bit shamt
+
+                    // SLLIW: imm[11:5] must be 0000000; shamt in [0..31]
+                    if (immHi != 0b0000000) {
+                    inst.isLegal = false;
+                    }
+
+                    if (shamt5 >= 32) {      
+                        inst.isLegal = false; // checking the bound
+                    }
+                } 
+                else if (inst.funct3 == FUNCT3_SRL_SRA) {
+                    immHi  = (inst.instruction >> 25) & 0x7F; // imm[11:5]
+                    shamt5 = (inst.instruction >> 20) & 0x1F;
+
+                    // SRLIW (0000000) or SRAIW (0100000); shamt in [0..31]
+                    if (!(immHi == 0b0000000 || immHi == 0b0100000)) {
+                        inst.isLegal = false;
+                    }
+                    if (shamt5 >= 32) {      
+                        inst.isLegal = false; // checking the bound
+                    }
+                }
+            } else {
                 inst.isLegal = false;
             }
-
             break;
         
         case OP_LOAD: // lb, lh, lw, ld, lbu, lhu, lwu
@@ -155,12 +191,10 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_LBU || 
                 inst.funct3 == FUNCT3_LHU || 
                 inst.funct3 == FUNCT3_LWU) {
-                    //pass
-            } 
-            else {
+                // pass
+            } else {
                 inst.isLegal = false;
             }
-            
             break; 
 
         case OP_RTYPE: //add, sub, sll, slt, sltu, xor, srl, sra, or, and
@@ -177,8 +211,17 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_SRL_SRA || 
                 inst.funct3 == FUNCT3_OR || 
                 inst.funct3 == FUNCT3_AND) {
-                    //pass
-            } 
+                // R/RW use inst.funct7 directly
+                if (inst.funct3 == FUNCT3_ADD_SUB || inst.funct3 == FUNCT3_SRL_SRA) {
+                    // ADD/SUB and SRL/SRA allow funct7 = 0000000 or 0100000
+                    if (!((inst.funct7 == FUNCT7_DEFAULT) || (inst.funct7 == FUNCT7_SUB_SRA))) { 
+                        inst.isLegal = false;
+                    }
+                    // all other R ops require funct7 == 0000000
+                    else if (inst.funct7 != FUNCT7_DEFAULT) {
+                        inst.isLegal = false;
+                    }
+            }
             else {
                 inst.isLegal = false;
             }
@@ -193,7 +236,16 @@ Instruction simDecode(Instruction inst) {
             if (inst.funct3 == FUNCT3_ADD_SUB || 
                 inst.funct3 == FUNCT3_SLL || 
                 inst.funct3 == FUNCT3_SRL_SRA ) {
-                    //pass
+
+                if (inst.funct3 == FUNCT3_ADD_SUB || inst.funct3 == FUNCT3_SRL_SRA) {
+                    // ADDW/SUBW and SRLW/SRAW allow funct7 = 0000000 or 0100000
+                    if (!((inst.funct7 == FUNCT7_DEFAULT) || (inst.funct7 == FUNCT7_SUB_SRA))) {
+                        inst.isLegal = false;
+                    }
+                }
+                    else if (inst.funct7 != FUNCT7_DEFAULT) { // SLLW
+                        inst.isLegal = false;
+                    }
             } 
             else {
                 inst.isLegal = false;
@@ -211,12 +263,10 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_SH || 
                 inst.funct3 == FUNCT3_SW ||
                 inst.funct3 == FUNCT3_SD) {
-                    //pass
-            } 
-            else {
+                // pass
+            } else {
                 inst.isLegal = false;
-            } 
-
+            }
             break;
         
         case OP_SBTYPE: // beq, bne, blt, bge, bltu, bgeu
@@ -231,9 +281,8 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_BGE ||
                 inst.funct3 == FUNCT3_BLTU ||
                 inst.funct3 == FUNCT3_BGEU) {
-                    //pass
-            } 
-            else {
+                // pass
+            } else {
                 inst.isLegal = false;
             } 
             break;
@@ -243,7 +292,6 @@ Instruction simDecode(Instruction inst) {
             inst.readsRs1 = false;
             inst.readsRs2 = false;
             inst.writesRd = true;
-
             break;
 
         case OP_AUIPC:
@@ -251,7 +299,6 @@ Instruction simDecode(Instruction inst) {
             inst.readsRs1 = false;
             inst.readsRs2 = false;
             inst.writesRd = true;
-            
             break;
 
         case OP_JAL:
@@ -259,7 +306,6 @@ Instruction simDecode(Instruction inst) {
             inst.readsRs1 = false;
             inst.readsRs2 = false;
             inst.writesRd = true;
-        
             break;
 
         case OP_JALR:
@@ -267,11 +313,9 @@ Instruction simDecode(Instruction inst) {
             inst.readsRs1 = true;
             inst.readsRs2 = false;
             inst.writesRd = true;
-            
+
             if (inst.funct3 == FUNCT3_JALR) {
-            //pass
-            }
-            else { 
+            } else { 
                 inst.isLegal = false;
             }
             break;
@@ -281,6 +325,8 @@ Instruction simDecode(Instruction inst) {
     }
     return inst;
 }
+
+
 
 // Collect reg operands for arith or addr gen
 Instruction simOperandCollection(Instruction inst, REGS regData) {
@@ -296,6 +342,8 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
 
 // determine the type of instruction R, I, S, SB, U, UJ and instruction type 
 Instruction instructionTypeandBits(Instruction inst) {
+        inst.opcode = inst.instruction & 0b1111111;
+
     if (inst.opcode == OP_RTYPE || inst.opcode == OP_RTYPEW) {
         inst.isR = true;
 
@@ -304,15 +352,19 @@ Instruction instructionTypeandBits(Instruction inst) {
         inst.rs1    = (inst.instruction >> 15) & 0b11111;
         inst.rs2    = (inst.instruction >> 20) & 0b11111;
         inst.funct7 = (inst.instruction >> 25) & 0b1111111;
+        inst.imm = 0; 
     }
     else if (inst.opcode == OP_INTIMM || inst.opcode == OP_INTIMMW || 
     inst.opcode == OP_LOAD || inst.opcode == OP_JALR) {
+        
         inst.isI = true;
         
         inst.funct3 = inst.instruction >> 12 & 0b111;
         inst.rd = inst.instruction >> 7 & 0b11111;
         inst.rs1 = inst.instruction >> 15 & 0b11111;
         inst.imm = inst.instruction >> 20 & 0b111111111111;
+        uint64_t imm12 = (inst.instruction >> 20) & 0xFFF;
+        inst.imm = signExtend(imm12, 12);
     }
     else if (inst.opcode == OP_STORE) {
         inst.isS = true;
@@ -334,7 +386,7 @@ Instruction instructionTypeandBits(Instruction inst) {
         uint64_t imm10_5 = (inst.instruction >> 25) & 0x3F;
         uint64_t imm4_1 = (inst.instruction >> 8)  & 0xF;
         uint64_t imm11 = (inst.instruction >> 7)  & 0x1;
-        inst.imm    = signExtend((imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1), 13);
+        inst.imm = signExtend((imm12 << 12) | (imm11 << 11) | (imm10_5 << 5) | (imm4_1 << 1), 13);
     }
     else if (inst.opcode == OP_LUI || inst.opcode == OP_AUIPC) {
         inst.isU = true;
@@ -352,30 +404,194 @@ Instruction instructionTypeandBits(Instruction inst) {
         uint64_t imm19_12= (inst.instruction >> 12) & 0xFF;
         inst.imm = signExtend((imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1), 21);
     }
-    return inst;
+    return inst; 
 }
 
 // Resolve next PC whether +4 or branch/jump target
 Instruction simNextPCResolution(Instruction inst) {
 
-    if(inst.isSB) { 
-        
+    if (inst.isSB) {
+        bool takeBranch = false;
+        switch (inst.funct3) {
+            case FUNCT3_BEQ:  takeBranch = (inst.op1Val == inst.op2Val); break;
+            case FUNCT3_BNE:  takeBranch = (inst.op1Val != inst.op2Val); break;
+            case FUNCT3_BLT:  takeBranch = ((int64_t)inst.op1Val < (int64_t)inst.op2Val); break;
+            case FUNCT3_BGE:  takeBranch = ((int64_t)inst.op1Val >= (int64_t)inst.op2Val); break;
+            case FUNCT3_BLTU: takeBranch = (inst.op1Val < inst.op2Val); break;
+            case FUNCT3_BGEU: takeBranch = (inst.op1Val >= inst.op2Val); break;
+        }
+        inst.nextPC = takeBranch ? inst.PC + inst.imm : inst.PC + 4;
     }
 
-    inst.nextPC = inst.PC + 4;
+    else if (inst.opcode == OP_JAL) {
+        inst.nextPC = inst.PC + inst.imm;
+    }
+
+    else if (inst.opcode == OP_JALR){
+        inst.nextPC = (inst.op1Val + inst.imm) & ~1ULL;
+    }
+    else {
+        inst.nextPC = inst.PC + 4;
+    }
 
     return inst;
 }
 
 // Perform arithmetic/logic operations
 Instruction simArithLogic(Instruction inst) {
-    uint64_t imm12  = inst.instruction >> 20 & 0b111111111111;
-    uint64_t sext_imm12 = (imm12 & 0x800) ? (imm12 | 0xFFFFFFFFFFFFF000) : imm12;
+    switch (inst.opcode) {
 
-    inst.arithResult = inst.op1Val + sext_imm12;
-      
+        // -------- I-TYPE: ALU immediates --------
+        case OP_INTIMM: // addi, slli, slti, sltiu, xori, srli, srai, ori, andi
+            switch (inst.funct3) {
+                case FUNCT3_ADD_SUB: // addi 
+                    inst.arithResult = (int64_t) inst.op1Val + inst.imm; // typecast?
+                    break;
+                case FUNCT3_SLL: //slli
+                    inst.arithResult = inst.op1Val << (inst.imm & 0b111111);
+                    break;
+                case FUNCT3_SLT: //slti 
+                    inst.arithResult = ((int64_t)inst.op1Val < (int64_t)inst.imm) ? 1 : 0;
+                    break;
+                case FUNCT3_SLTU: //sltiu 
+                    inst.arithResult = (inst.op1Val < (uint64_t)inst.imm) ? 1 : 0;
+                    break;
+                case FUNCT3_XOR: //xori
+                    inst.arithResult = inst.op1Val ^ inst.imm; 
+                    break;
+                case FUNCT3_SRL_SRA: 
+                // further check funct7 (SRAI vs SRLI)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ // srli
+                        inst.arithResult = (uint64_t)inst.op1Val >> (inst.imm & 0b111111);
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ // srai
+                        inst.arithResult = (int64_t)inst.op1Val >> (inst.imm & 0b111111); // understand the sign nad unsigned
+
+                    }
+                    break;
+                case FUNCT3_OR: //ori
+                    inst.arithResult = inst.op1Val | inst.imm; 
+                    break;
+                case FUNCT3_AND: //andi
+                    inst.arithResult = inst.op1Val & inst.imm; 
+                    break;
+            }
+            break;
+
+        // -------- I-TYPE W (32-bit ops) --------
+        // Integer ALU immediate instructions (keep low 32-bits and sign extends) addiw, slliw, srliw, sraiw
+        case OP_INTIMMW:
+            switch (inst.funct3) {
+                case FUNCT3_ADD_SUB: //addiw
+                    inst.arithResult = (u_int32_t)(inst.op1Val + inst.imm);
+                    
+                    break;
+                case FUNCT3_SLL: //slliw
+                    inst.arithResult = (u_int32_t)(inst.op1Val << (inst.imm & 0b111111));
+
+                    break;
+                case FUNCT3_SRL_SRA: 
+                    // further check funct7 (SRAIW vs SRLIW)
+                    if (inst.funct7 == FUNCT7_SUB_SRA){ //sraiw
+                        inst.arithResult = (int32_t)((int32_t)inst.op1Val >> (inst.imm & 0x1F));
+
+                    }
+                    else if (inst.funct7 == FUNCT7_DEFAULT ){ //srliw
+                        inst.arithResult = (int32_t)((uint32_t)inst.op1Val >> (inst.imm & 0x1F));
+
+                    }
+                    break;
+            }
+            break;
+
+        // -------- R-TYPE --------
+        // Register to Register instructions add, sub, sll, slt, sltu, xor, srl, sra, or, and
+        case OP_RTYPE:
+            switch (inst.funct3) {
+                case FUNCT3_ADD_SUB: 
+                    // further check funct7 (ADD vs SUB)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ //add
+                        inst.arithResult = (int64_t)inst.op1Val + (int64_t)inst.op2Val; 
+
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ //sub
+                        inst.arithResult = (int64_t)inst.op1Val -  (int64_t)inst.op2Val; 
+
+                    }
+                    break;
+                case FUNCT3_SLL: 
+                    inst.arithResult = inst.op1Val << (inst.op2Val & 0b111111); 
+                    break;
+                case FUNCT3_SLT:
+                    inst.arithResult =  ((int64_t)inst.op1Val < (int64_t)inst.op2Val) ? 1 : 0;
+                    break;
+                case FUNCT3_SLTU: 
+                    inst.arithResult = (inst.op1Val < inst.op2Val) ? 1 : 0;
+                    break;
+                case FUNCT3_XOR:
+                    inst.arithResult =  inst.op1Val ^ inst.op2Val;
+                    break;
+                case FUNCT3_SRL_SRA: 
+                    // further check funct7 (SRA vs SRL)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ // srl
+                        inst.arithResult = (uint64_t)inst.op1Val >> (inst.op2Val & 0b111111);
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ // sra
+                        inst.arithResult = (int64_t)inst.op1Val >> (inst.op2Val & 0b111111);
+
+                    }
+                    break;
+                case FUNCT3_OR: 
+                    inst.arithResult = inst.op1Val | inst.op2Val;
+                    break;
+                case FUNCT3_AND: 
+                    inst.arithResult = inst.op1Val & inst.op2Val;
+                    break;
+            }
+            break;
+
+        // -------- R-TYPE W (32-bit ops) --------
+        // Register to Register instructions (keep low 32-bits and sign extends) addw, subw, sllw, srlw, sraw
+        case OP_RTYPEW:
+            switch (inst.funct3) {
+                case FUNCT3_ADD_SUB: 
+                    // further check funct7 (ADDW vs SUBW)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ //addw
+                        inst.arithResult = (int64_t)((int32_t)inst.op1Val + (int32_t)inst.op2Val);
+
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ //subw
+                        inst.arithResult = (int64_t)((int32_t)inst.op1Val - (int32_t)inst.op2Val);
+
+                    }
+                    break;
+                case FUNCT3_SLL:  //sllw
+                    inst.arithResult = (int64_t)(int32_t)((int32_t)inst.op1Val << (inst.op2Val & 0x1F));
+                    break;
+                case FUNCT3_SRL_SRA: 
+                    // further check funct7 (SRAW vs SRLW)
+                    if (inst.funct7 == FUNCT7_SUB_SRA){ // sraw
+                        inst.arithResult = (int64_t)(int32_t)((int32_t)inst.op1Val >> (inst.op2Val & 0x1F));
+                    }
+                    else if (inst.funct7 == FUNCT7_DEFAULT){ // srlw
+                        inst.arithResult =(int64_t)(int32_t)((uint32_t)inst.op1Val >> (inst.op2Val & 0x1F));
+                    }
+                    break;
+            }
+            break;
+
+        // -------- U-TYPE --------
+        case OP_LUI: // lui
+            inst.arithResult = inst.imm;
+            break;
+        case OP_AUIPC: // auipc
+            inst.arithResult = inst.imm + inst.PC;
+            break;
+    }
     return inst;
 }
+
+
 
 // Generate memory address for load/store instructions
 Instruction simAddrGen(Instruction inst) {
@@ -390,8 +606,9 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
 // Write back results to registers
 Instruction simCommit(Instruction inst, REGS &regData) {
 
-    // regData here is passed by reference, so changes will be reflected in original
-    regData.registers[inst.rd] = inst.arithResult;
+    if (inst.writesRd && inst.rd != 0) {
+        regData.registers[inst.rd] = inst.arithResult;
+    }
 
     return inst;
 }
