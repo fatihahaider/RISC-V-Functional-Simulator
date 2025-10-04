@@ -51,7 +51,7 @@ void dump(MemoryStore *myMem) {
 // TODO All functions below (except main) are incomplete.
 // Only ADDI is implemented. Your task is to complete these functions.
 
-int64_t signExtend(uint64_t x, int bits) {
+static inline int64_t signExtend(uint64_t x, int bits) {
     uint64_t m = 1ULL << (bits - 1);
     return (int64_t)((x ^ m) - m);
 }
@@ -131,7 +131,6 @@ Instruction simDecode(Instruction inst) {
                     inst.isLegal = false; // checking the bound
                     }      
                 }
-            }
             else {
                 inst.isLegal = false;
             }
@@ -173,10 +172,9 @@ Instruction simDecode(Instruction inst) {
                         inst.isLegal = false; // checking the bound
                     }
                 }
-            }
-                else {
+            } else {
                 inst.isLegal = false;
-                }
+            }
             break;
         
         case OP_LOAD: // lb, lh, lw, ld, lbu, lhu, lwu
@@ -194,8 +192,7 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_LHU || 
                 inst.funct3 == FUNCT3_LWU) {
                 // pass
-            } 
-            else {
+            } else {
                 inst.isLegal = false;
             }
             break; 
@@ -220,13 +217,10 @@ Instruction simDecode(Instruction inst) {
                     if (!((inst.funct7 == FUNCT7_DEFAULT) || (inst.funct7 == FUNCT7_SUB_SRA))) { 
                         inst.isLegal = false;
                     }
-                }
                     // all other R ops require funct7 == 0000000
-                    else {
-                        if (inst.funct7 != FUNCT7_DEFAULT) {
+                    else if (inst.funct7 != FUNCT7_DEFAULT) {
                         inst.isLegal = false;
                     }
-                }
             }
             else {
                 inst.isLegal = false;
@@ -249,11 +243,9 @@ Instruction simDecode(Instruction inst) {
                         inst.isLegal = false;
                     }
                 }
-                    else {
-                        if (inst.funct7 != FUNCT7_DEFAULT) { // SLLW
+                    else if (inst.funct7 != FUNCT7_DEFAULT) { // SLLW
                         inst.isLegal = false;
                     }
-                }
             } 
             else {
                 inst.isLegal = false;
@@ -272,8 +264,7 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_SW ||
                 inst.funct3 == FUNCT3_SD) {
                 // pass
-            } 
-            else {
+            } else {
                 inst.isLegal = false;
             }
             break;
@@ -291,8 +282,7 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_BLTU ||
                 inst.funct3 == FUNCT3_BGEU) {
                 // pass
-            } 
-            else {
+            } else {
                 inst.isLegal = false;
             } 
             break;
@@ -325,18 +315,18 @@ Instruction simDecode(Instruction inst) {
             inst.writesRd = true;
 
             if (inst.funct3 == FUNCT3_JALR) {
-            } 
-            else { 
+            } else { 
                 inst.isLegal = false;
             }
             break;
 
         default:
             inst.isLegal = false;
-        }
-    return inst;     
+    }
+    return inst;
 }
-                
+    }
+}
 
 
 
@@ -449,293 +439,177 @@ Instruction simNextPCResolution(Instruction inst) {
     return inst;
 }
 
-/// Perform arithmetic/logic operations
+// Perform arithmetic/logic operations
 Instruction simArithLogic(Instruction inst) {
     switch (inst.opcode) {
 
-        // ---------------- I-TYPE (RV64) ----------------
-        // addi, slli, slti, sltiu, xori, srli/srai, ori, andi
-        case OP_INTIMM:
+        // -------- I-TYPE: ALU immediates --------
+        case OP_INTIMM: // addi, slli, slti, sltiu, xori, srli, srai, ori, andi
             switch (inst.funct3) {
-                case FUNCT3_ADD_SUB: // addi
-                    inst.arithResult = (int64_t)inst.op1Val + inst.imm;
+                case FUNCT3_ADD_SUB: // addi 
+                    inst.arithResult = (int64_t) inst.op1Val + inst.imm; // typecast?
                     break;
-
-                case FUNCT3_SLL: {    // slli (6-bit shamt for RV64)
-                    uint8_t sh = (uint8_t)(inst.imm & 0x3F);
-                    inst.arithResult = inst.op1Val << sh;
+                case FUNCT3_SLL: //slli
+                    inst.arithResult = inst.op1Val << (inst.imm & 0b111111);
                     break;
-                }
-
-                case FUNCT3_SLT:      // slti
+                case FUNCT3_SLT: //slti 
                     inst.arithResult = ((int64_t)inst.op1Val < (int64_t)inst.imm) ? 1 : 0;
                     break;
-
-                case FUNCT3_SLTU:     // sltiu
+                case FUNCT3_SLTU: //sltiu 
                     inst.arithResult = (inst.op1Val < (uint64_t)inst.imm) ? 1 : 0;
                     break;
-
-                case FUNCT3_XOR:      // xori
-                    inst.arithResult = inst.op1Val ^ inst.imm;
+                case FUNCT3_XOR: //xori
+                    inst.arithResult = inst.op1Val ^ inst.imm; 
                     break;
+                case FUNCT3_SRL_SRA: 
+                // further check funct7 (SRAI vs SRLI)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ // srli
+                        inst.arithResult = (uint64_t)inst.op1Val >> (inst.imm & 0b111111);
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ // srai
+                        inst.arithResult = (int64_t)inst.op1Val >> (inst.imm & 0b111111); // understand the sign nad unsigned
 
-                case FUNCT3_SRL_SRA: { // srli / srai (6-bit shamt for RV64)
-                    uint8_t sh  = (uint8_t)(inst.imm & 0x3F);
-                    bool isSRA  = ((inst.instruction >> 30) & 1) != 0; // 1 => SRAI
-                    inst.arithResult = isSRA
-                        ? (uint64_t)((int64_t)inst.op1Val >> sh)
-                        : ((uint64_t)inst.op1Val >> sh);
+                    }
                     break;
-                }
-
-                case FUNCT3_OR:       // ori
-                    inst.arithResult = inst.op1Val | inst.imm;
+                case FUNCT3_OR: //ori
+                    inst.arithResult = inst.op1Val | inst.imm; 
                     break;
-
-                case FUNCT3_AND:      // andi
-                    inst.arithResult = inst.op1Val & inst.imm;
+                case FUNCT3_AND: //andi
+                    inst.arithResult = inst.op1Val & inst.imm; 
                     break;
             }
             break;
 
-        // ---------------- I-TYPE W (RV64, 32-bit result) ----------------
-        // addiw, slliw, srliw/sraiw
+        // -------- I-TYPE W (32-bit ops) --------
+        // Integer ALU immediate instructions (keep low 32-bits and sign extends) addiw, slliw, srliw, sraiw
         case OP_INTIMMW:
             switch (inst.funct3) {
-                case FUNCT3_ADD_SUB: { // addiw
-                    int32_t res = (int32_t)((int64_t)inst.op1Val + (int64_t)inst.imm);
-                    inst.arithResult = (int64_t)res; // sign-extend from 32
+                case FUNCT3_ADD_SUB: //addiw
+                    inst.arithResult = (u_int32_t)(inst.op1Val + inst.imm);
+                    
                     break;
-                }
+                case FUNCT3_SLL: //slliw
+                    inst.arithResult = (u_int32_t)(inst.op1Val << (inst.imm & 0b111111));
 
-                case FUNCT3_SLL: {     // slliw (5-bit shamt)
-                    uint8_t sh = (uint8_t)(inst.imm & 0x1F);
-                    int32_t res = (int32_t)((uint32_t)inst.op1Val << sh);
-                    inst.arithResult = (int64_t)res; // sign-extend
                     break;
-                }
+                case FUNCT3_SRL_SRA: 
+                    // further check funct7 (SRAIW vs SRLIW)
+                    if (inst.funct7 == FUNCT7_SUB_SRA){ //sraiw
+                        inst.arithResult = (int32_t)((int32_t)inst.op1Val >> (inst.imm & 0x1F));
 
-                case FUNCT3_SRL_SRA: { // srliw / sraiw (5-bit shamt)
-                    uint8_t sh = (uint8_t)(inst.imm & 0x1F);
-                    bool isSRA = ((inst.instruction >> 30) & 1) != 0; // 1 => SRAIW
-                    int32_t res = isSRA
-                        ? (int32_t)((int32_t)inst.op1Val >> sh)     // arithmetic
-                        : (int32_t)((uint32_t)inst.op1Val >> sh);   // logical
-                    inst.arithResult = (int64_t)res; // sign-extend
+                    }
+                    else if (inst.funct7 == FUNCT7_DEFAULT ){ //srliw
+                        inst.arithResult = (int32_t)((uint32_t)inst.op1Val >> (inst.imm & 0x1F));
+
+                    }
                     break;
-                }
             }
             break;
 
-        // ---------------- R-TYPE (RV64) ----------------
-        // add/sub, sll, slt, sltu, xor, srl/sra, or, and
+        // -------- R-TYPE --------
+        // Register to Register instructions add, sub, sll, slt, sltu, xor, srl, sra, or, and
         case OP_RTYPE:
             switch (inst.funct3) {
-                case FUNCT3_ADD_SUB:
-                    if (inst.funct7 == FUNCT7_SUB_SRA) { // sub
-                        inst.arithResult = (int64_t)inst.op1Val - (int64_t)inst.op2Val;
-                    } else {                              // add
-                        inst.arithResult = (int64_t)inst.op1Val + (int64_t)inst.op2Val;
+                case FUNCT3_ADD_SUB: 
+                    // further check funct7 (ADD vs SUB)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ //add
+                        inst.arithResult = (int64_t)inst.op1Val + (int64_t)inst.op2Val; 
+
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ //sub
+                        inst.arithResult = (int64_t)inst.op1Val -  (int64_t)inst.op2Val; 
+
                     }
                     break;
-
-                case FUNCT3_SLL: { // 6-bit shamt from rs2
-                    uint8_t sh = (uint8_t)(inst.op2Val & 0x3F);
-                    inst.arithResult = inst.op1Val << sh;
+                case FUNCT3_SLL: 
+                    inst.arithResult = inst.op1Val << (inst.op2Val & 0b111111); 
                     break;
-                }
-
                 case FUNCT3_SLT:
-                    inst.arithResult = ((int64_t)inst.op1Val < (int64_t)inst.op2Val) ? 1 : 0;
+                    inst.arithResult =  ((int64_t)inst.op1Val < (int64_t)inst.op2Val) ? 1 : 0;
                     break;
-
-                case FUNCT3_SLTU:
+                case FUNCT3_SLTU: 
                     inst.arithResult = (inst.op1Val < inst.op2Val) ? 1 : 0;
                     break;
-
                 case FUNCT3_XOR:
-                    inst.arithResult = inst.op1Val ^ inst.op2Val;
+                    inst.arithResult =  inst.op1Val ^ inst.op2Val;
                     break;
+                case FUNCT3_SRL_SRA: 
+                    // further check funct7 (SRA vs SRL)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ // srl
+                        inst.arithResult = (uint64_t)inst.op1Val >> (inst.op2Val & 0b111111);
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ // sra
+                        inst.arithResult = (int64_t)inst.op1Val >> (inst.op2Val & 0b111111);
 
-                case FUNCT3_SRL_SRA: {
-                    uint8_t sh = (uint8_t)(inst.op2Val & 0x3F);
-                    if (inst.funct7 == FUNCT7_SUB_SRA) { // sra
-                        inst.arithResult = (uint64_t)((int64_t)inst.op1Val >> sh);
-                    } else {                              // srl
-                        inst.arithResult = ((uint64_t)inst.op1Val >> sh);
                     }
                     break;
-                }
-
-                case FUNCT3_OR:
+                case FUNCT3_OR: 
                     inst.arithResult = inst.op1Val | inst.op2Val;
                     break;
-
-                case FUNCT3_AND:
+                case FUNCT3_AND: 
                     inst.arithResult = inst.op1Val & inst.op2Val;
                     break;
             }
             break;
 
-        // ---------------- R-TYPE W (RV64, 32-bit result) ----------------
-        // addw/subw, sllw, srlw/sraw
+        // -------- R-TYPE W (32-bit ops) --------
+        // Register to Register instructions (keep low 32-bits and sign extends) addw, subw, sllw, srlw, sraw
         case OP_RTYPEW:
             switch (inst.funct3) {
-                case FUNCT3_ADD_SUB: {
-                    int32_t res = (inst.funct7 == FUNCT7_SUB_SRA)
-                        ? (int32_t)((int32_t)inst.op1Val - (int32_t)inst.op2Val) // subw
-                        : (int32_t)((int32_t)inst.op1Val + (int32_t)inst.op2Val); // addw
-                    inst.arithResult = (int64_t)res; // sign-extend
-                    break;
-                }
+                case FUNCT3_ADD_SUB: 
+                    // further check funct7 (ADDW vs SUBW)
+                    if (inst.funct7 == FUNCT7_DEFAULT){ //addw
+                        inst.arithResult = (int64_t)((int32_t)inst.op1Val + (int32_t)inst.op2Val);
 
-                case FUNCT3_SLL: { // sllw (5-bit shamt from rs2)
-                    uint8_t sh = (uint8_t)(inst.op2Val & 0x1F);
-                    int32_t res = (int32_t)((uint32_t)inst.op1Val << sh);
-                    inst.arithResult = (int64_t)res; // sign-extend
-                    break;
-                }
+                    }
+                    else if (inst.funct7 == FUNCT7_SUB_SRA ){ //subw
+                        inst.arithResult = (int64_t)((int32_t)inst.op1Val - (int32_t)inst.op2Val);
 
-                case FUNCT3_SRL_SRA: {
-                    uint8_t sh = (uint8_t)(inst.op2Val & 0x1F);
-                    int32_t res = (inst.funct7 == FUNCT7_SUB_SRA)
-                        ? (int32_t)((int32_t)inst.op1Val >> sh)      // sraw (arith)
-                        : (int32_t)((uint32_t)inst.op1Val >> sh);    // srlw (logic)
-                    inst.arithResult = (int64_t)res; // sign-extend
+                    }
                     break;
-                }
+                case FUNCT3_SLL:  //sllw
+                    inst.arithResult = (int64_t)(int32_t)((int32_t)inst.op1Val << (inst.op2Val & 0x1F));
+                    break;
+                case FUNCT3_SRL_SRA: 
+                    // further check funct7 (SRAW vs SRLW)
+                    if (inst.funct7 == FUNCT7_SUB_SRA){ // sraw
+                        inst.arithResult = (int64_t)(int32_t)((int32_t)inst.op1Val >> (inst.op2Val & 0x1F));
+                    }
+                    else if (inst.funct7 == FUNCT7_DEFAULT){ // srlw
+                        inst.arithResult =(int64_t)(int32_t)((uint32_t)inst.op1Val >> (inst.op2Val & 0x1F));
+                    }
+                    break;
             }
             break;
 
-        // ---------------- U-TYPE ----------------
-        case OP_LUI:
-            inst.arithResult = inst.imm;       // imm already << 12 in decode
+        // -------- U-TYPE --------
+        case OP_LUI: // lui
+            inst.arithResult = inst.imm;
             break;
-
-        case OP_AUIPC:
-            inst.arithResult = inst.PC + inst.imm;
-            break;
-
-        // ---------------- Jumps: rd = PC+4 ----------------
-        case OP_JAL:
-        case OP_JALR:
-            inst.arithResult = inst.PC + 4;
-            break;
-
-        // Others (e.g., LOAD/STORE) do their work in AddrGen/MemAccess.
-        default:
+        case OP_AUIPC: // auipc
+            inst.arithResult = inst.imm + inst.PC;
             break;
     }
     return inst;
 }
-
 
 
 
 // Generate memory address for load/store instructions
 Instruction simAddrGen(Instruction inst) {
-    // For I-type LOADs and S-type STOREs: addr = rs1 + imm (imm is already sign-extended)
-    if (inst.opcode == OP_LOAD || inst.opcode == OP_STORE) {
-        inst.memAddress = inst.op1Val + inst.imm;
-    }
     return inst;
 }
 
 // Perform memory access for load/store instructions
 Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
-    if (inst.opcode == OP_LOAD) {
-        uint64_t val = 0;
-
-        switch (inst.funct3) {
-            case FUNCT3_LB: {   // signed 8
-                myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
-                int8_t  v8  = (int8_t)val;
-                inst.memResult = (int64_t)v8;           // sign-extend to 64
-                break;
-            }
-            case FUNCT3_LH: {   // signed 16
-                myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
-                int16_t v16 = (int16_t)val;
-                inst.memResult = (int64_t)v16;          // sign-extend
-                break;
-            }
-            case FUNCT3_LW: {   // signed 32
-                myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
-                int32_t v32 = (int32_t)val;
-                inst.memResult = (int64_t)v32;          // sign-extend
-                break;
-            }
-            case FUNCT3_LD: {   // 64
-                myMem->getMemValue(inst.memAddress, val, DOUBLE_SIZE);
-                inst.memResult = val;                   // already 64-bit
-                break;
-            }
-            case FUNCT3_LBU: {  // unsigned 8
-                myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
-                uint8_t v8 = (uint8_t)val;
-                inst.memResult = (uint64_t)v8;          // zero-extend
-                break;
-            }
-            case FUNCT3_LHU: {  // unsigned 16
-                myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
-                uint16_t v16 = (uint16_t)val;
-                inst.memResult = (uint64_t)v16;         // zero-extend
-                break;
-            }
-            case FUNCT3_LWU: {  // unsigned 32 (RV64)
-                myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
-                uint32_t v32 = (uint32_t)val;
-                inst.memResult = (uint64_t)v32;         // zero-extend
-                break;
-            }
-            default:
-                // should have been marked illegal in decode
-                break;
-        }
-
-        // Loads write rd: pass value forward via arithResult for commit
-        inst.arithResult = inst.memResult;
-    }
-    else if (inst.opcode == OP_STORE) {
-        // rs2 contains data to store (already in op2Val)
-        switch (inst.funct3) {
-            case FUNCT3_SB: {  // store 8
-                uint8_t v8 = (uint8_t)(inst.op2Val & 0xFF);
-                myMem->setMemValue(inst.memAddress, (uint64_t)v8, BYTE_SIZE);
-                break;
-            }
-            case FUNCT3_SH: {  // store 16
-                uint16_t v16 = (uint16_t)(inst.op2Val & 0xFFFF);
-                myMem->setMemValue(inst.memAddress, (uint64_t)v16, HALF_SIZE);
-                break;
-            }
-            case FUNCT3_SW: {  // store 32
-                uint32_t v32 = (uint32_t)(inst.op2Val & 0xFFFFFFFFULL);
-                myMem->setMemValue(inst.memAddress, (uint64_t)v32, WORD_SIZE);
-                break;
-            }
-            case FUNCT3_SD: {  // store 64
-                myMem->setMemValue(inst.memAddress, (uint64_t)inst.op2Val, DOUBLE_SIZE);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
     return inst;
 }
-
 
 // Write back results to registers
 Instruction simCommit(Instruction inst, REGS &regData) {
 
-    if (inst.writesRd && inst.rd != 0) {
-        regData.registers[inst.rd] = inst.arithResult;
-    }
-
-    // Belt-and-suspenders: x0 is always zero.
-    regData.registers[0] = 0;
+    // regData here is passed by reference, so changes will be reflected in original
+    regData.registers[inst.rd] = inst.arithResult;
 
     return inst;
 }
@@ -744,20 +618,7 @@ Instruction simCommit(Instruction inst, REGS &regData) {
 Instruction simInstruction(uint64_t &PC, MemoryStore *myMem, REGS &regData) {
     Instruction inst = simFetch(PC, myMem);
     inst = simDecode(inst);
-    if (inst.isHalt) {
-        return inst;
-    }
-    
-    if (inst.isNop) {
-        inst.nextPC = inst.PC + 4;
-        PC = inst.nextPC;
-        return inst;
-    }
-
-    if (!inst.isLegal) {
-        return inst;
-    }
-    
+    if (!inst.isLegal || inst.isHalt) return inst;
     inst = simOperandCollection(inst, regData);
     inst = simNextPCResolution(inst);
     inst = simArithLogic(inst);
