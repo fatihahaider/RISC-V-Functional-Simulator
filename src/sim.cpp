@@ -473,10 +473,12 @@ Instruction simNextPCResolution(Instruction inst) {
     }
 
     else if (inst.opcode == OP_JAL) {
+        inst.arithResult = inst.PC + 4;
         inst.nextPC = inst.PC + inst.imm;
     }
 
     else if (inst.opcode == OP_JALR){
+        inst.arithResult = inst.PC + 4;
         inst.nextPC = (inst.op1Val + inst.imm) & ~1ULL;
     }
     else {
