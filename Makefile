@@ -58,3 +58,11 @@ clean:
 
 # To dump elf:
 # riscv64-unknown-elf-objdump -D -j .text -M no-aliases *.elf
+
+# Usage: make run TEST=add
+run: sim test/$(TEST).bin
+	@echo "Running simulator on $(TEST).bin..."
+	@./sim test/$(TEST).bin > test/output_$(TEST).txt
+	@echo "Output written to test/output_$(TEST).txt"
+	@echo "---- Simulation output ----"
+	@cat test/output_$(TEST).txt
