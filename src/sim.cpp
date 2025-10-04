@@ -2,6 +2,7 @@
 
 using namespace std;
 
+
 // RV64I without csr, environment, or fence instructions
 
 //           31          25 24 20 19 15 14    12 11          7 6      0
@@ -11,6 +12,12 @@ using namespace std;
 // SB type: | imm[12|10:5] | rs2 | rs1 | funct3 | imm[4:1|11] | opcode |
 // U  type: | imm[31:12]                        | rd          | opcode |
 // UJ type: | imm[20|10:1|11|19:12]             | rd          | opcode |
+
+
+// printing toggle mode
+static const bool DEBUG_MODE = true;  
+
+
 
 // initialize memory with program binary
 bool initMemory(char *programFile, MemoryStore *myMem) {
@@ -347,6 +354,17 @@ Instruction simOperandCollection(Instruction inst, REGS regData) {
     if(inst.readsRs2){
         inst.op2Val = regData.registers[inst.rs2];
     }
+
+    if (DEBUG_MODE) {
+        std::cout << "Operand Collection:" << std::endl;
+        std::cout << "rs1(x" << std::dec << inst.rs1 << ") = 0x" 
+                << std::hex << inst.op1Val << std::endl;
+        if (inst.readsRs2)
+            std::cout << "rs2(x" << std::dec << inst.rs2 << ") = 0x" 
+                    << std::hex << inst.op2Val << std::endl;
+        std::cout << std::endl;
+    }
+
     return inst;
 }
 
@@ -414,6 +432,27 @@ Instruction instructionTypeandBits(Instruction inst) {
         uint64_t imm19_12= (inst.instruction >> 12) & 0xFF;
         inst.imm = signExtend((imm20 << 20) | (imm19_12 << 12) | (imm11 << 11) | (imm10_1 << 1), 21);
     }
+
+    if (DEBUG_MODE) {
+        std::cout << "Decoded Instruction:" << std::endl;
+        std::cout << "------------------------------------" << std::endl;
+        std::cout << "PC: 0x" << std::hex << inst.PC 
+                << "   Raw: 0x" << inst.instruction << std::endl;
+        std::cout << "Opcode: 0x" << std::hex << inst.opcode 
+                << "   funct3: 0x" << inst.funct3 
+                << "   funct7: 0x" << inst.funct7 << std::endl;
+        std::cout << "rd: x" << std::dec << inst.rd 
+                << "   rs1: x" << inst.rs1 
+                << "   rs2: x" << inst.rs2 << std::endl;
+        std::cout << "imm: 0x" << std::hex << inst.imm 
+                << "   Type: " 
+                << (inst.isR ? "R" : inst.isI ? "I" : inst.isS ? "S" :
+                    inst.isSB ? "SB" : inst.isU ? "U" : inst.isUJ ? "UJ" : "?")
+                << std::endl;
+        std::cout << "------------------------------------" << std::endl << std::endl;
+    }
+
+
     return inst; 
 }
 
