@@ -63,6 +63,8 @@ Instruction simFetch(uint64_t PC, MemoryStore *myMem) {
     myMem->getMemValue(PC, instruction, WORD_SIZE);
     instruction = (uint32_t)instruction;
 
+    printf("Fetched instruction 0x%08lx at PC=0x%lx\n", instruction, PC);
+
     Instruction inst;
     inst.PC = PC;
     inst.instruction = instruction;
@@ -598,19 +600,108 @@ Instruction simArithLogic(Instruction inst) {
 
 // Generate memory address for load/store instructions
 Instruction simAddrGen(Instruction inst) {
+    // For I-type LOADs and S-type STOREs: addr = rs1 + imm (imm is already sign-extended)
+    if (inst.opcode == OP_LOAD || inst.opcode == OP_STORE) {
+        inst.memAddress = inst.op1Val + inst.imm;
+    }
     return inst;
 }
 
-// Perform memory access for load/store instructions
+
 Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
+    if (inst.opcode == OP_LOAD) {
+        uint64_t val = 0;
+
+        switch (inst.funct3) {
+            case FUNCT3_LB: {   // signed 8
+                myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
+                int8_t  v8  = (int8_t)val;
+                inst.memResult = (int64_t)v8;           // sign-extend to 64
+                break;
+            }
+            case FUNCT3_LH: {   // signed 16
+                myMem->getMemValue(inst.memAddress, val, HALFWORD_SIZE);
+                int16_t v16 = (int16_t)val;
+                inst.memResult = (int64_t)v16;          // sign-extend
+                break;
+            }
+            case FUNCT3_LW: {   // signed 32
+                myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
+                int32_t v32 = (int32_t)val;
+                inst.memResult = (int64_t)v32;          // sign-extend
+                break;
+            }
+            case FUNCT3_LD: {   // 64
+                myMem->getMemValue(inst.memAddress, val, DWORD_SIZE);
+                inst.memResult = val;                   // already 64-bit
+                break;
+            }
+            case FUNCT3_LBU: {  // unsigned 8
+                myMem->getMemValue(inst.memAddress, val, BYTE_SIZE);
+                uint8_t v8 = (uint8_t)val;
+                inst.memResult = (uint64_t)v8;          // zero-extend
+                break;
+            }
+            case FUNCT3_LHU: {  // unsigned 16
+                myMem->getMemValue(inst.memAddress, val, HALFWORD_SIZE);
+                uint16_t v16 = (uint16_t)val;
+                inst.memResult = (uint64_t)v16;         // zero-extend
+                break;
+            }
+            case FUNCT3_LWU: {  // unsigned 32 (RV64)
+                myMem->getMemValue(inst.memAddress, val, WORD_SIZE);
+                uint32_t v32 = (uint32_t)val;
+                inst.memResult = (uint64_t)v32;         // zero-extend
+                break;
+            }
+            default:
+                // should have been marked illegal in decode
+                break;
+        }
+
+        // Loads write rd: pass value forward via arithResult for commit
+        inst.arithResult = inst.memResult;
+    }
+    else if (inst.opcode == OP_STORE) {
+        // rs2 contains data to store (already in op2Val)
+        switch (inst.funct3) {
+            case FUNCT3_SB: {  // store 8
+                uint8_t v8 = (uint8_t)(inst.op2Val & 0xFF);
+                myMem->setMemValue(inst.memAddress, (uint64_t)v8, BYTE_SIZE);
+                break;
+            }
+            case FUNCT3_SH: {  // store 16
+                uint16_t v16 = (uint16_t)(inst.op2Val & 0xFFFF);
+                myMem->setMemValue(inst.memAddress, (uint64_t)v16, HALFWORD_SIZE);
+                break;
+            }
+            case FUNCT3_SW: {  // store 32
+                uint32_t v32 = (uint32_t)(inst.op2Val & 0xFFFFFFFFULL);
+                myMem->setMemValue(inst.memAddress, (uint64_t)v32, WORD_SIZE);
+                break;
+            }
+            case FUNCT3_SD: {  // store 64
+                myMem->setMemValue(inst.memAddress, (uint64_t)inst.op2Val, DWORD_SIZE);
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
     return inst;
 }
+
 
 // Write back results to registers
 Instruction simCommit(Instruction inst, REGS &regData) {
 
-    // regData here is passed by reference, so changes will be reflected in original
-    regData.registers[inst.rd] = inst.arithResult;
+    if (inst.writesRd && inst.rd != 0) {
+        regData.registers[inst.rd] = inst.arithResult;
+    }
+
+    // Belt-and-suspenders: x0 is always zero.
+    regData.registers[0] = 0;
 
     return inst;
 }
@@ -619,7 +710,19 @@ Instruction simCommit(Instruction inst, REGS &regData) {
 Instruction simInstruction(uint64_t &PC, MemoryStore *myMem, REGS &regData) {
     Instruction inst = simFetch(PC, myMem);
     inst = simDecode(inst);
-    if (!inst.isLegal || inst.isHalt) return inst;
+    if (inst.isHalt) {
+        return inst;
+    }
+    
+    if (inst.isNop) {
+        inst.nextPC = inst.PC + 4;
+        PC = inst.nextPC;
+        return inst;
+    }
+
+    if (!inst.isLegal) {
+        return inst;
+    }
     inst = simOperandCollection(inst, regData);
     inst = simNextPCResolution(inst);
     inst = simArithLogic(inst);
