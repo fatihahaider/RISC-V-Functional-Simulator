@@ -13,11 +13,11 @@ label1:
 addi x5, x0, 222      # executed
 
 # ---- JALR ----
-addi x6, x0, label2   # offset to label2 (simplified)
-add x6, x6, x0
-jalr x7, 0(x6)        # jump to label2
-addi x8, x0, 333      # skipped
+auipc x6, 0           # x6 = current PC
+addi  x6, x6, 20      # manually approximate offset to label2 (count instructions × 4 bytes)
+jalr  x7, 0(x6)       # jump to label2
+addi  x8, x0, 333     # skipped
 label2:
-addi x9, x0, 444      # executed
+addi  x9, x0, 444      # executed
 
 .word 0xfeedfeed
