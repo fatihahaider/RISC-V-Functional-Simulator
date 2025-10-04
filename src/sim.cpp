@@ -51,7 +51,7 @@ void dump(MemoryStore *myMem) {
 // TODO All functions below (except main) are incomplete.
 // Only ADDI is implemented. Your task is to complete these functions.
 
-static inline int64_t signExtend(uint64_t x, int bits) {
+int64_t signExtend(uint64_t x, int bits) {
     uint64_t m = 1ULL << (bits - 1);
     return (int64_t)((x ^ m) - m);
 }
