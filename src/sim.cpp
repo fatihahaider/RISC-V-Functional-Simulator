@@ -747,6 +747,13 @@ Instruction simCommit(Instruction inst, REGS &regData) {
     // Belt-and-suspenders: x0 is always zero.
     regData.registers[0] = 0;
 
+    if (DEBUG_MODE){
+        printf("Committed: x%lu = 0x%lx (%ld)\n",
+               inst.rd,
+               regData.registers[inst.rd],
+               (int64_t)regData.registers[inst.rd]);
+    }
+
     return inst;
 }
 
