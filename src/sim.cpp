@@ -323,9 +323,10 @@ Instruction simDecode(Instruction inst) {
         default:
             inst.isLegal = false;
     }
-    return inst;
-}
+    
     }
+    }
+    return inst;
 }
 
 
