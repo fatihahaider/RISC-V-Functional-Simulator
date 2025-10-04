@@ -13,7 +13,7 @@ label1:
 addi x5, x0, 222      # executed
 
 # ---- JALR ----
-addi x6, x0, label2 - .  # offset to label2 (simplified)
+addi x6, x0, label2   # offset to label2 (simplified)
 add x6, x6, x0
 jalr x7, 0(x6)        # jump to label2
 addi x8, x0, 333      # skipped
