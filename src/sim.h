@@ -154,7 +154,7 @@ bool initMemory(char *programFile, MemoryStore *myMem);
 void dump(MemoryStore *myMem);
 
 // added: sign extends 
-uint64_t signExtend(uint64_t code, int num);
+int64_t signExtend(uint64_t x, int bits);
 
 // --------------------------------------------------------------------------
 // Simulation functions
