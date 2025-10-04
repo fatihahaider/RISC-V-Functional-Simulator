@@ -620,7 +620,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
                 break;
             }
             case FUNCT3_LH: {   // signed 16
-                myMem->getMemValue(inst.memAddress, val, HALFWORD_SIZE);
+                myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
                 int16_t v16 = (int16_t)val;
                 inst.memResult = (int64_t)v16;          // sign-extend
                 break;
@@ -632,7 +632,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
                 break;
             }
             case FUNCT3_LD: {   // 64
-                myMem->getMemValue(inst.memAddress, val, DWORD_SIZE);
+                myMem->getMemValue(inst.memAddress, val, DOUBLE_SIZE);
                 inst.memResult = val;                   // already 64-bit
                 break;
             }
@@ -643,7 +643,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
                 break;
             }
             case FUNCT3_LHU: {  // unsigned 16
-                myMem->getMemValue(inst.memAddress, val, HALFWORD_SIZE);
+                myMem->getMemValue(inst.memAddress, val, HALF_SIZE);
                 uint16_t v16 = (uint16_t)val;
                 inst.memResult = (uint64_t)v16;         // zero-extend
                 break;
@@ -672,7 +672,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
             }
             case FUNCT3_SH: {  // store 16
                 uint16_t v16 = (uint16_t)(inst.op2Val & 0xFFFF);
-                myMem->setMemValue(inst.memAddress, (uint64_t)v16, HALFWORD_SIZE);
+                myMem->setMemValue(inst.memAddress, (uint64_t)v16, HALF_SIZE);
                 break;
             }
             case FUNCT3_SW: {  // store 32
@@ -681,7 +681,7 @@ Instruction simMemAccess(Instruction inst, MemoryStore *myMem) {
                 break;
             }
             case FUNCT3_SD: {  // store 64
-                myMem->setMemValue(inst.memAddress, (uint64_t)inst.op2Val, DWORD_SIZE);
+                myMem->setMemValue(inst.memAddress, (uint64_t)inst.op2Val, DOUBLE_SIZE);
                 break;
             }
             default:
