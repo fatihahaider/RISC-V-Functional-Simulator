@@ -131,7 +131,8 @@ Instruction simDecode(Instruction inst) {
 
                     if (shamt6 >= 64) {
                     inst.isLegal = false; // checking the bound
-                    }      
+                    }
+                }      
                 }
             else {
                 inst.isLegal = false;
@@ -174,7 +175,8 @@ Instruction simDecode(Instruction inst) {
                         inst.isLegal = false; // checking the bound
                     }
                 }
-            } else {
+            } 
+            else {
                 inst.isLegal = false;
             }
             break;
@@ -194,7 +196,8 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_LHU || 
                 inst.funct3 == FUNCT3_LWU) {
                 // pass
-            } else {
+            } 
+            else {
                 inst.isLegal = false;
             }
             break; 
@@ -219,11 +222,12 @@ Instruction simDecode(Instruction inst) {
                     if (!((inst.funct7 == FUNCT7_DEFAULT) || (inst.funct7 == FUNCT7_SUB_SRA))) { 
                         inst.isLegal = false;
                     }
+                }
                     // all other R ops require funct7 == 0000000
                     else if (inst.funct7 != FUNCT7_DEFAULT) {
                         inst.isLegal = false;
                     }
-            }
+                }
             else {
                 inst.isLegal = false;
             }
@@ -266,7 +270,8 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_SW ||
                 inst.funct3 == FUNCT3_SD) {
                 // pass
-            } else {
+            } 
+            else {
                 inst.isLegal = false;
             }
             break;
@@ -284,7 +289,8 @@ Instruction simDecode(Instruction inst) {
                 inst.funct3 == FUNCT3_BLTU ||
                 inst.funct3 == FUNCT3_BGEU) {
                 // pass
-            } else {
+            } 
+            else {
                 inst.isLegal = false;
             } 
             break;
@@ -317,16 +323,15 @@ Instruction simDecode(Instruction inst) {
             inst.writesRd = true;
 
             if (inst.funct3 == FUNCT3_JALR) {
-            } else { 
+            } 
+            
+            else { 
                 inst.isLegal = false;
             }
             break;
 
         default:
             inst.isLegal = false;
-    }
-    
-    }
     }
     return inst;
 }
