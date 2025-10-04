@@ -20,5 +20,3 @@ loop:
 
 array:	.space 48		# 12 words for Fibonacci numbers
 size:	.word 12
-
-
