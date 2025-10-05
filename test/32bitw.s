@@ -2,7 +2,7 @@
 # 32-BIT WORD INSTRUCTION TEST (RV64W)
 # ======================================================
 
-addi x1, x0, 1
+addiw x1, x0, 1
 slliw x1, x1, 5          # x1 = 0x100000000
 addiw x2, x1, 5          # low 32 bits + sign extend → x2 = 5
 slliw x3, x2, 2          # shift left 2 bits → x3 = 20
