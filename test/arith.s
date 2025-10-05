@@ -1,5 +1,5 @@
 # ======================================================
-# ARITHMETIC + LOGICAL TEST (no pseudo-instr)
+# ARITHMETIC + LOGICAL TEST 
 # ======================================================
 
 addi x1, x0, 5         # x1 = 5
