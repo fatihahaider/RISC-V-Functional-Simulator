@@ -2,7 +2,6 @@
 
 using namespace std;
 
-
 // RV64I without csr, environment, or fence instructions
 
 //           31          25 24 20 19 15 14    12 11          7 6      0
@@ -15,9 +14,7 @@ using namespace std;
 
 
 // printing toggle mode
-static const bool DEBUG_MODE = true;  
-
-
+static const bool DEBUG_MODE = false;  
 
 // initialize memory with program binary
 bool initMemory(char *programFile, MemoryStore *myMem) {
