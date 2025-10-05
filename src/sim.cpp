@@ -70,7 +70,10 @@ Instruction simFetch(uint64_t PC, MemoryStore *myMem) {
     myMem->getMemValue(PC, instruction, WORD_SIZE);
     instruction = (uint32_t)instruction;
 
-    printf("Fetched instruction 0x%08lx at PC=0x%lx\n", instruction, PC);
+    if (DEBUG_MODE) {
+        printf("Fetched instruction 0x%08lx at PC=0x%lx\n", instruction, PC);
+    }
+    
 
     Instruction inst;
     inst.PC = PC;
