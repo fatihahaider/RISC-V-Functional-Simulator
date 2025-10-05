@@ -10,5 +10,6 @@ srliw x4, x3, 1          # shift right logical → x4 = 10
 sraiw x5, x3, 2          # shift right arithmetic → x5 = 5
 subw x6, x3, x5          # 20 - 5 = 15
 sllw x7, x5, x2          # 5 << 5 = 160
+sraw x7, x5, x2
 
 .word 0xfeedfeed
