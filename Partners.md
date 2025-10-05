@@ -2,36 +2,40 @@
 
 ### Group
 
-- [name_1 - netid_1: email_1]
-- [name_2 - netid_2: email_2]
+- [fatiha haider- fh2857: fh2857@princeton.edu]
+- [misael rosero - mr5364: mr5364@princeton.edu]
 
 ## Time Investment
 
 ### Approximately how many hours did it take you to complete this assignment?
 
-- Number of hours: [n hours]
+- Number of hours: [9 hours]
 
 ### How many additional test cases did you write to test your implementation?
 
-- Number of test cases: [n tests]
+- Number of test cases: [9 extra test files (comprehensive and used all instructions at least once)]
 
 ### If you used other people's test cases, acknowledge the authors below.
 
-- [Test authors or N/A]
+- [N/A]
 
 ## Challenges Encountered
 
 ### Did you encounter any serious problems? If yes, please describe (e.g spec was unclear).
 
-- [Yes/No]
-- [If yes, please describe the problems encountered]
+- [Yes]
+- [The biggest problem we had was trying to implement the logic correctly to determine if 
+an instruction was legal or not and then how to group our opcodes/funct3/funct7 values together
+effeciently and in a way that would make sense. we also kind of struggled to understand how to seperate between two instructions that are "technically" the same but actually aren't in the bit number logic or type instruction. This and the different castings for the arithemtic logic
+were probably the most difficult. after we payed the most attention to this, testing wasnt
+so bad. ]
 
 ## Additional Comments
 
 ### Write any other comments here.
 
-- [comment_1]
-- [comment_2]
+- [this was actually very fun and much more enjoyable than 217 -fatiha]
+- [I enjoy working at this lower level articheture - misael]
 
 ## Help Information
 
@@ -41,7 +45,9 @@
 - Refer to the syllabus generative AI tools policy: the policy for use of AI assistants parallels that for human collaboration. Remember that you cannot directly generate code that you submit. 
 - Write "N/A" if you did not use generative AI for any help during this project.
 
-- [describe how you used generate AI or N/A]
+- [We used generative AI to help us with lines of reasonning and how we should think
+about breaking down our code, grouping functions together and how we could go about optimizing our code that still makes sense to us. We also used generative ai to better understand 
+some of the instructions we were unfamiliar with and how they are supposed to behave logically, sign-wise and bitwise]
 
 ## Acknowledgement of Original Work
 
@@ -53,5 +59,5 @@
 >
 >> This programming assignment represents my own work in accordance with University regulations and the course syllabus.  /s/ Ada Lovelace
 
-- [Acknowledgement of student 1]
-- [Acknowledgement of student 2]
+- [This programming assignment represents my own work in accordance with University regulations and the course syllabus.  /s/ Fatiha Haider]
+- [This programming assignment represents my own work in accordance with University regulations and the course syllabus.  /s/ Misael Rosero]
