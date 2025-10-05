@@ -1,20 +1,25 @@
 # ======================================================
-# LOAD + STORE TEST (pure RV64I)
+# EXTENDED MEMORY TEST
 # ======================================================
 
-# ---- Initialize registers manually ----
-addi x1, x0, 10         # x1 = 10 (data value)
-lui  x2, 0x0            # upper 20 bits = 0
-addi x2, x2, 64         # x2 = 0x40 (some small memory address)
+addi x1, x0, 0x80        # Base address
+addi x2, x0, 0x12        # Test value
+sb x2, 0(x1)             # Store byte
+lb x3, 0(x1)             # Load byte signed
+lbu x4, 0(x1)            # Load byte unsigned
 
-# ---- STORE ----
-sw   x1, 0(x2)          # store word x1 -> Mem[x2]
+addi x5, x0, 0x1234
+sh x5, 2(x1)
+lh x6, 2(x1)
+lhu x7, 2(x1)
 
-# ---- LOAD ----
-lw   x3, 0(x2)          # load word Mem[x2] -> x3
+addi x8, x0, 0x12345678
+sw x8, 8(x1)
+lw x9, 8(x1)
+lwu x10, 8(x1)
 
-# ---- Verify with another immediate ----
-addi x4, x0, 15         # x4 = 15
-add  x5, x3, x4         # x5 = 25 expected
+addi x11, x0, 0x12345678
+sd x11, 16(x1)
+ld x12, 16(x1)
 
 .word 0xfeedfeed
