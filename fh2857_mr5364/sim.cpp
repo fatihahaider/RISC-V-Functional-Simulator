@@ -15,7 +15,7 @@ using namespace std;
 
 
 // printing toggle mode
-static const bool DEBUG_MODE = true;  
+static const bool DEBUG_MODE = false;  
 
 
 
